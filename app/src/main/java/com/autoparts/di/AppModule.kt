@@ -1,5 +1,6 @@
 package com.autoparts.di
 
+import com.autoparts.Data.Remote.ProductosApiService
 import com.autoparts.Data.Remote.UsuariosApiService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -37,7 +38,7 @@ object AppModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
         Retrofit.Builder()
-            .baseUrl("https://gestionhuacalesapi.azurewebsites.net/")
+            .baseUrl("https://autopartsap1-production.up.railway.app/")
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
@@ -46,5 +47,11 @@ object AppModule {
     @Singleton
     fun provideJugadorApiService(retrofit: Retrofit): UsuariosApiService {
         return retrofit.create(UsuariosApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideProductosApiService(retrofit: Retrofit): ProductosApiService {
+        return retrofit.create(ProductosApiService::class.java)
     }
 }
