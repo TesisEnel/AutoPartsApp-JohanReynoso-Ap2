@@ -1,11 +1,13 @@
 package com.autoparts.di
 
+import com.autoparts.Data.Repository.ProductoRepositoryImpl
 import com.autoparts.Data.Repository.UsuarioRepositoryImpl
+import com.autoparts.dominio.repository.ProductoRepository
+import com.autoparts.dominio.repository.UsuarioRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import com.autoparts.dominio.repository.UsuarioRepository
 import javax.inject.Singleton
 
 @Module
@@ -17,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindGastoRepository(
         impl: UsuarioRepositoryImpl
     ): UsuarioRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindProductoRepository(
+        impl: ProductoRepositoryImpl
+    ): ProductoRepository
 }
