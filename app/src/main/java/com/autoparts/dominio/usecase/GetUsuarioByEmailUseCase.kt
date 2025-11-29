@@ -5,8 +5,14 @@ import com.autoparts.dominio.model.Usuarios
 import com.autoparts.dominio.repository.UsuarioRepository
 import javax.inject.Inject
 
-class GetUsuarioUseCase @Inject constructor(
+/**
+ * Caso de uso para obtener un usuario por su email.
+ */
+class GetUsuarioByEmailUseCase @Inject constructor(
     private val repository: UsuarioRepository
 ) {
-    suspend operator fun invoke(id: String): Resource<Usuarios> = repository.getUser(id)
+    suspend operator fun invoke(email: String): Resource<Usuarios> {
+        return repository.getUserByEmail(email)
+    }
 }
+
