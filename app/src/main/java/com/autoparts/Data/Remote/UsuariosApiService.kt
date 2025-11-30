@@ -2,6 +2,7 @@ package com.autoparts.Data.Remote
 
 import com.autoparts.Data.Remote.Dto.CreateUserDto
 import com.autoparts.Data.Remote.Dto.LoginDto
+import com.autoparts.Data.Remote.Dto.LoginResponse
 import com.autoparts.Data.Remote.Dto.UpdateUserDto
 import com.autoparts.Data.Remote.Dto.UserDto
 import retrofit2.Response
@@ -22,8 +23,8 @@ interface UsuariosApiService {
     @POST("api/Users/register")
     suspend fun register(@Body createUserDto: CreateUserDto): Response<UserDto>
 
-    @POST("api/Users/login")
-    suspend fun login(@Body loginDto: LoginDto): Response<UserDto>
+    @POST("login")
+    suspend fun login(@Body loginDto: LoginDto): Response<LoginResponse>
 
     @PUT("api/Users/{id}")
     suspend fun updateUser(@Path("id") id: String, @Body updateUserDto: UpdateUserDto): Response<Unit>
