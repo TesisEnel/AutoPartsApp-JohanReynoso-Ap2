@@ -2,6 +2,7 @@ package com.autoparts.dominio.repository
 
 import com.autoparts.Data.Remote.Resource
 import com.autoparts.dominio.model.CreateUser
+import com.autoparts.dominio.model.LoginResult
 import com.autoparts.dominio.model.LoginUser
 import com.autoparts.dominio.model.UpdateUser
 import com.autoparts.dominio.model.Usuarios
@@ -14,7 +15,7 @@ interface UsuarioRepository {
 
     suspend fun register(createUser: CreateUser): Resource<Usuarios>
 
-    suspend fun login(loginUser: LoginUser): Resource<Usuarios>
+    suspend fun login(loginUser: LoginUser): Resource<LoginResult>
 
     suspend fun updateUser(id: String, updateUser: UpdateUser): Resource<Unit>
 
