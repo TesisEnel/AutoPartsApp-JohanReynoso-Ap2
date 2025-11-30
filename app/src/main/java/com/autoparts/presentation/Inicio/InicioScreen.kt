@@ -1,30 +1,32 @@
 package com.autoparts.presentation.Inicio
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.autoparts.dominio.model.Producto
-import com.autoparts.presentation.navigation.Screen
 import com.autoparts.presentation.components.ProductImage
+import com.autoparts.presentation.navigation.Screen
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,14 +60,31 @@ fun HomeScreen(
         }
     }
 
-    HomeScreenContent(
+    NewHomeScreenContent(
         state = state,
         onEvent = viewModel::onEvent,
         onProductoClick = { productoId ->
             navController.navigate(Screen.ProductoDetalle.createRoute(productoId))
         },
-        onNavigateToLogin = {
-            navController.navigate(Screen.Login.route)
+        onNavigateToCarrito = {
+            navController.navigate(Screen.Carrito.route)
+        },
+        onNavigateToCategorias = {
+            navController.navigate(Screen.Categorias.route)
+        },
+        onNavigateToPerfil = {
+            if (state.userId != null) {
+                navController.navigate(Screen.Perfil.route)
+            } else {
+                navController.navigate(Screen.Login.route)
+            }
+        },
+        onNavigateToVentas = {
+            if (state.userId != null) {
+                navController.navigate(Screen.Ventas.route)
+            } else {
+                navController.navigate(Screen.Login.route)
+            }
         },
         snack = snack
     )
@@ -73,11 +92,14 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreenContent(
+fun NewHomeScreenContent(
     state: InicioUiState,
     onEvent: (InicioUiEvent) -> Unit,
-    onProductoClick: (Int) -> Unit = {},
-    onNavigateToLogin: () -> Unit = {},
+    onProductoClick: (Int) -> Unit,
+    onNavigateToCarrito: () -> Unit,
+    onNavigateToCategorias: () -> Unit,
+    onNavigateToPerfil: () -> Unit,
+    onNavigateToVentas: () -> Unit,
     snack: SnackbarHostState
 ) {
     Scaffold(
@@ -85,44 +107,19 @@ fun HomeScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "AutoParts Store",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = "Inicio",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 actions = {
-                    if (state.userId != null) {
-                        IconButton(onClick = { onEvent(InicioUiEvent.showDialogEdit) }) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Mi perfil",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        IconButton(onClick = { onEvent(InicioUiEvent.Logout) }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = "Cerrar sesión",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    } else {
-                        TextButton(
-                            onClick = onNavigateToLogin
-                        ) {
-                            Text("Iniciar Sesión")
-                        }
+                    IconButton(onClick = onNavigateToCarrito) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = "Carrito",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -130,313 +127,449 @@ fun HomeScreenContent(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snack) }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            if (state.userId != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "¡Bienvenido!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = state.email.ifEmpty { "Usuario" },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar perfil",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clickable { onEvent(InicioUiEvent.showDialogEdit) }
-                        )
+        bottomBar = {
+            BottomNavigationBar(
+                selectedItem = 0, // Inicio está seleccionado
+                onItemSelected = { index ->
+                    when (index) {
+                        0 -> { /* Ya estamos en inicio */ }
+                        1 -> onNavigateToCategorias()
+                        2 -> onNavigateToCarrito()
+                        3 -> onNavigateToPerfil()
                     }
                 }
-            } else {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clickable(onClick = onNavigateToLogin),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            )
+        },
+        snackbarHost = { SnackbarHost(hostState = snack) }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                SearchBar(
+                    query = state.searchQuery,
+                    onQueryChange = { onEvent(InicioUiEvent.SearchQueryChanged(it)) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Text(
+                        text = "Categorías Destacadas",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val categorias = listOf(
+                        "Uso General",
+                        "Autos o Vehículos Ligeros",
+                        "Motocicletas",
+                        "Vehículos Pesados"
+                    )
+
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "¡Bienvenido a AutoParts!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = "Inicia sesión para gestionar tu perfil",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                        items(categorias) { categoria ->
+                            val productoCategoria = state.listProductos
+                                .firstOrNull { it.categoria.equals(categoria, ignoreCase = true) }
+
+                            if (productoCategoria != null) {
+                                CategoryProductCard(
+                                    producto = productoCategoria,
+                                    categoria = categoria,
+                                    onProductoClick = {
+                                        onProductoClick(productoCategoria.productoId ?: 0)
+                                    }
+                                )
+                            }
                         }
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Iniciar sesión",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(32.dp)
-                        )
                     }
                 }
             }
 
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = { onEvent(InicioUiEvent.SearchQueryChanged(it)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Buscar productos o categorías...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Buscar"
-                    )
-                },
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium
+            item {
+                Text(
+                    text = "Productos Destacados",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            val categorias = listOf(
+                "Uso General",
+                "Autos o Vehículos Ligeros",
+                "Motocicletas",
+                "Vehículos Pesados"
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            val productosDestacados = categorias.mapNotNull { categoria ->
+                state.listProductos.firstOrNull {
+                    it.categoria.equals(categoria, ignoreCase = true)
+                }
+            }
 
-            when {
-                state.isLoadingProductos -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                state.listProductos.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                text = "No hay productos disponibles",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                    }
-                }
-                else -> {
-                    val filteredProducts = if (state.searchQuery.isBlank()) {
-                        state.listProductos
-                    } else {
-                        state.listProductos.filter {
-                            it.productoNombre.contains(state.searchQuery, ignoreCase = true) ||
-                            it.categoria.contains(state.searchQuery, ignoreCase = true)
-                        }
-                    }
+            items(
+                items = productosDestacados,
+                key = { it.productoId ?: 0 }
+            ) { producto ->
+                ProductoCardWithImage(
+                    producto = producto,
+                    onProductoClick = { onProductoClick(producto.productoId ?: 0) },
+                    onAddToCarrito = {
+                        onEvent(InicioUiEvent.AddToCarrito(producto.productoId ?: 0))
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filteredProducts) { producto ->
-                            ProductoCardHome(
-                                producto = producto,
-                                onClick = { onProductoClick(producto.productoId ?: 0) }
-                            )
-                        }
-                    }
-                }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 
-    if (state.showDialog && state.userId != null) {
-        AlertDialog(
-            title = {
-                Text("Mi Perfil")
-            },
-            text = {
-                Column(
-                    modifier = Modifier.imePadding(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    OutlinedTextField(
-                        value = state.email,
-                        onValueChange = { onEvent(InicioUiEvent.EmailChanged(it)) },
-                        label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        isError = state.emailError != null,
-                        supportingText = {
-                            state.emailError?.let { Text(text = it) }
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = state.phoneNumber,
-                        onValueChange = { onEvent(InicioUiEvent.PhoneNumberChanged(it)) },
-                        label = { Text("Teléfono (opcional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        isError = state.phoneNumberError != null,
-                        supportingText = {
-                            state.phoneNumberError?.let { Text(text = it) }
-                        }
-                    )
-                }
-            },
-            onDismissRequest = {
-                onEvent(InicioUiEvent.hideDialogEdit)
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onEvent(InicioUiEvent.Save)
-                    }
-                ) {
-                    Text("Guardar")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        onEvent(InicioUiEvent.hideDialogEdit)
-                    }
-                ) {
-                    Text("Cancelar")
-                }
-            }
+    if (state.showDialog) {
+        EditProfileDialog(
+            email = state.email,
+            phoneNumber = state.phoneNumber,
+            emailError = state.emailError,
+            phoneNumberError = state.phoneNumberError,
+            onEmailChange = { onEvent(InicioUiEvent.EmailChanged(it)) },
+            onPhoneNumberChange = { onEvent(InicioUiEvent.PhoneNumberChanged(it)) },
+            onSave = { onEvent(InicioUiEvent.Save) },
+            onDismiss = { onEvent(InicioUiEvent.hideDialogEdit) },
+            isLoading = state.isLoadingUser,
+            onLogout = { onEvent(InicioUiEvent.Logout) }
         )
     }
 }
 
 @Composable
-fun ProductoCardHome(
+fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier.fillMaxWidth(),
+        placeholder = { Text("Buscar productos...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Buscar"
+            )
+        },
+        shape = RoundedCornerShape(24.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = MaterialTheme.colorScheme.primary
+        ),
+        singleLine = true
+    )
+}
+
+@Composable
+fun CategoryProductCard(
     producto: Producto,
-    onClick: () -> Unit
+    categoria: String,
+    onProductoClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .width(280.dp)
+            .height(180.dp)
+            .clickable(onClick = onProductoClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Card(
+        Box(modifier = Modifier.fillMaxSize()) {
+            ProductImage(
+                imageUrl = producto.productoImagenUrl,
+                contentDescription = producto.productoNombre,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                placeholderSize = 64.dp
+            )
+
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f))
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                ProductImage(
-                    imageUrl = producto.productoImagenUrl,
-                    contentDescription = producto.productoNombre,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    placeholderSize = 48.dp
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = categoria,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = producto.productoNombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$${String.format("%,d", producto.productoMonto)}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-
-            Text(
-                text = producto.productoNombre,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text(
-                    text = producto.categoria,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-
-            Text(
-                text = "RD$ ${producto.productoMonto}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "Disponible: ${producto.productoCantidad}",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (producto.productoCantidad > 0)
-                    MaterialTheme.colorScheme.tertiary
-                else
-                    MaterialTheme.colorScheme.error
-            )
         }
     }
 }
 
+@Composable
+fun ProductoCardWithImage(
+    producto: Producto,
+    onProductoClick: () -> Unit,
+    onAddToCarrito: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onProductoClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ProductImage(
+                imageUrl = producto.productoImagenUrl,
+                contentDescription = producto.productoNombre,
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop,
+                placeholderSize = 48.dp
+            )
 
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = producto.productoNombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = producto.categoria,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "$${String.format("%,d", producto.productoMonto)}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Button(
+                    onClick = onAddToCarrito,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingCart,
+                        contentDescription = "Agregar",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Agregar")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavigationBar(
+    selectedItem: Int,
+    onItemSelected: (Int) -> Unit
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp
+    ) {
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
+            label = { Text("Inicio") },
+            selected = selectedItem == 0,
+            onClick = { onItemSelected(0) }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Menu, contentDescription = "Categorías") },
+            label = { Text("Categorías") },
+            selected = selectedItem == 1,
+            onClick = { onItemSelected(1) }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito") },
+            label = { Text("Carrito") },
+            selected = selectedItem == 2,
+            onClick = { onItemSelected(2) }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Person, contentDescription = "Perfil") },
+            label = { Text("Perfil") },
+            selected = selectedItem == 3,
+            onClick = { onItemSelected(3) }
+        )
+    }
+}
+
+@Composable
+fun EditProfileDialog(
+    email: String,
+    phoneNumber: String,
+    emailError: String?,
+    phoneNumberError: String?,
+    onEmailChange: (String) -> Unit,
+    onPhoneNumberChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+    isLoading: Boolean,
+    onLogout: () -> Unit = {}
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Perfil") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = { Text("Email") },
+                    isError = emailError != null,
+                    supportingText = emailError?.let { { Text(it) } },
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = onPhoneNumberChange,
+                    label = { Text("Teléfono") },
+                    isError = phoneNumberError != null,
+                    supportingText = phoneNumberError?.let { { Text(it) } },
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = onLogout,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = "Cerrar sesión",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cerrar Sesión")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSave,
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Guardar")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isLoading
+            ) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
