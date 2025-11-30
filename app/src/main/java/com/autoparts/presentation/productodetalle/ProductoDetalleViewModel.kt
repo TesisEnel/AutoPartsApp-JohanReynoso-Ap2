@@ -3,7 +3,10 @@ package com.autoparts.presentation.productodetalle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.autoparts.Data.Remote.Resource
+import com.autoparts.Data.local.CarritoLocalManager
+import com.autoparts.dominio.model.AddCarrito
 import com.autoparts.dominio.model.Producto
+import com.autoparts.dominio.usecase.AddCarritoItemUseCase
 import com.autoparts.dominio.usecase.GetProductoUseCase
 import com.autoparts.dominio.usecase.SaveProductoUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +22,9 @@ import javax.inject.Inject
 @HiltViewModel
 class ProductoDetalleViewModel @Inject constructor(
     private val getProductoUseCase: GetProductoUseCase,
-    private val saveProductoUseCase: SaveProductoUseCase
+    private val saveProductoUseCase: SaveProductoUseCase,
+    private val addCarritoItemUseCase: AddCarritoItemUseCase,
+    private val carritoLocalManager: CarritoLocalManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProductoDetalleUiState())
@@ -53,6 +58,7 @@ class ProductoDetalleViewModel @Inject constructor(
             is ProductoDetalleUiEvent.UserMessageShown -> _state.update {
                 it.copy(userMessage = null)
             }
+            is ProductoDetalleUiEvent.AddToCarrito -> addToCarrito(event.cantidad)
         }
     }
 
@@ -149,6 +155,51 @@ class ProductoDetalleViewModel @Inject constructor(
                             isLoading = false
                         )
                     }
+                }
+            }
+        }
+    }
+
+    private fun addToCarrito(cantidad: Int) {
+        viewModelScope.launch {
+            val productoId = _state.value.productoId ?: return@launch
+
+            _state.update { it.copy(isAddingToCarrito = true) }
+
+            val addCarrito = AddCarrito(
+                productoId = productoId,
+                cantidad = cantidad
+            )
+
+            when (val result = addCarritoItemUseCase(addCarrito)) {
+                is Resource.Success -> {
+                    _state.update {
+                        it.copy(
+                            userMessage = "Producto agregado al carrito",
+                            isAddingToCarrito = false
+                        )
+                    }
+                }
+                is Resource.Error -> {
+                    val producto = Producto(
+                        productoId = productoId,
+                        productoNombre = _state.value.productoNombre,
+                        productoMonto = _state.value.productoMonto.toIntOrNull() ?: 0,
+                        productoCantidad = _state.value.productoCantidad.toIntOrNull() ?: 0,
+                        productoDescripcion = _state.value.productoDescripcion,
+                        productoImagenUrl = _state.value.productoImagenUrl,
+                        categoria = _state.value.categoria,
+                        fecha = _state.value.fecha
+                    )
+                    carritoLocalManager.addItem(producto, cantidad)
+                    _state.update {
+                        it.copy(
+                            userMessage = "Producto agregado al carrito",
+                            isAddingToCarrito = false
+                        )
+                    }
+                }
+                is Resource.Loading -> {
                 }
             }
         }
