@@ -1,16 +1,32 @@
 package com.autoparts.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.autoparts.Data.local.SessionManager
 import com.autoparts.presentation.Inicio.HomeScreen
+import com.autoparts.presentation.Inicio.InicioViewModel
 import com.autoparts.presentation.Login.LoginScreen
 import com.autoparts.presentation.productos.ProductosScreen
+import com.autoparts.presentation.categorias.CategoriasScreen
 import com.autoparts.presentation.productodetalle.ProductoDetalleScreen
+import com.autoparts.presentation.carrito.CarritoScreen
+import com.autoparts.presentation.checkout.CheckoutScreen
+import com.autoparts.presentation.ventas.VentasScreen
+import com.autoparts.presentation.ventadetalle.VentaDetalleScreen
+import com.autoparts.presentation.perfil.PerfilScreen
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -51,6 +67,9 @@ fun AppNavHost(
         composable(Screen.Productos.route) {
             ProductosScreen(navController)
         }
+        composable(Screen.Categorias.route) {
+            CategoriasScreen(navController)
+        }
         composable(
             route = Screen.ProductoDetalle.route,
             arguments = listOf(
@@ -63,6 +82,49 @@ fun AppNavHost(
                 productoId = productoId
             )
         }
+        composable(Screen.Carrito.route) {
+            CarritoScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCheckout = {
+                    navController.navigate(Screen.Checkout.route)
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route)
+                }
+            )
+        }
+        composable(Screen.Checkout.route) {
+            CheckoutScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToVenta = { ventaId ->
+                    navController.navigate(Screen.VentaDetalle.createRoute(ventaId)) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
+                }
+            )
+        }
+        composable(Screen.Ventas.route) {
+            VentasScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToVenta = { ventaId ->
+                    navController.navigate(Screen.VentaDetalle.createRoute(ventaId))
+                }
+            )
+        }
+        composable(
+            route = Screen.VentaDetalle.route,
+            arguments = listOf(
+                navArgument(Screen.VentaDetalle.ARG) { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val ventaId = backStackEntry.arguments?.getInt(Screen.VentaDetalle.ARG) ?: 0
+            VentaDetalleScreen(
+                ventaId = ventaId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Perfil.route) {
+            PerfilScreen(navController = navController)
+        }
     }
-
 }
