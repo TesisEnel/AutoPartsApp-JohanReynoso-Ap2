@@ -1,5 +1,6 @@
 package com.autoparts.presentation.ventas
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,11 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.autoparts.dominio.model.Venta
+import com.autoparts.domain.model.Venta
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -25,14 +27,36 @@ import java.util.*
 fun VentasScreen(
     onNavigateBack: () -> Unit,
     onNavigateToVenta: (Int) -> Unit,
+    onNavigateToLogin: () -> Unit = {},
     viewModel: VentasViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is VentasUiEffect.NavigateToLogin -> {
+                    onNavigateToLogin()
+                }
+                is VentasUiEffect.NavigateToVentaDetalle -> {
+                    onNavigateToVenta(effect.ventaId)
+                }
+                is VentasUiEffect.NavigateBack -> {
+                    onNavigateBack()
+                }
+            }
+        }
+    }
+
     LaunchedEffect(state.error) {
         state.error?.let { error ->
-            snackbarHostState.showSnackbar(error)
+            if (!error.contains("401", ignoreCase = true) &&
+                !error.contains("unauthorized", ignoreCase = true) &&
+                !error.contains("sesión", ignoreCase = true) &&
+                !error.contains("login", ignoreCase = true)) {
+                snackbarHostState.showSnackbar(error)
+            }
             viewModel.onEvent(VentasUiEvent.ClearError)
         }
     }
@@ -59,6 +83,13 @@ fun VentasScreen(
                 state.isLoading -> {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                state.error != null && state.ventas.isEmpty() -> {
+                    EmptyVentasWithLoginContent(
+                        error = state.error ?: "",
+                        modifier = Modifier.align(Alignment.Center),
+                        onLoginClick = onNavigateToLogin
                     )
                 }
                 state.ventas.isEmpty() -> {
@@ -122,13 +153,13 @@ private fun VentaCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Receipt,
+                    Image(
+                        painter = painterResource(id = com.autoparts.R.drawable.autoparts_redondo_bien),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "Venta #${venta.ventaId}",
+                        text = "Compra (${venta.pago.nombreTitular})",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -187,6 +218,37 @@ private fun VentaCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyVentasWithLoginContent(
+    error: String,
+    modifier: Modifier = Modifier,
+    onLoginClick: () -> Unit
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Inicia sesión para ver tus compras",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Button(onClick = onLoginClick) {
+            Icon(Icons.Default.Login, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Iniciar Sesión")
         }
     }
 }
