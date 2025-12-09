@@ -1,62 +1,40 @@
-package com.autoparts.Data.Repository
+package com.autoparts.data.repository
 
-import com.autoparts.Data.Mappers.toDomain
-import com.autoparts.Data.Mappers.toDto
-import com.autoparts.Data.Remote.Resource
-import com.autoparts.Data.Remote.ProductoRemoteDataSource
-import com.autoparts.dominio.model.Producto
-import com.autoparts.dominio.repository.ProductoRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import com.autoparts.data.remote.datasource.ProductoRemoteDataSource
+import com.autoparts.data.remote.mapper.ProductoMapper
+import com.autoparts.data.remote.util.Resource
+import com.autoparts.domain.model.Producto
+import com.autoparts.domain.repository.ProductoRepository
 import javax.inject.Inject
 
 class ProductoRepositoryImpl @Inject constructor(
-    val dataSource: ProductoRemoteDataSource
-): ProductoRepository {
-    override suspend fun getProductos(): Flow<List<Producto>> = flow{
-        val result = dataSource.getProductos()
-        when(result){
+    private val remoteDataSource: ProductoRemoteDataSource
+) : ProductoRepository {
+
+    companion object {
+        private const val ERROR_DESCONOCIDO = "Error desconocido"
+    }
+
+    override suspend fun getProductos(): Resource<List<Producto>> {
+        return when (val result = remoteDataSource.getProductos()) {
             is Resource.Success -> {
-                val list = result.data?.map{it.toDomain()} ?: emptyList()
-                emit(list)
+                val productos = result.data?.map { ProductoMapper.toDomain(it) } ?: emptyList()
+                Resource.Success(productos)
             }
-            is Resource.Error -> {
-                emit(emptyList())
-            }
-            else -> emit(emptyList())
+            is Resource.Error -> Resource.Error(result.message ?: ERROR_DESCONOCIDO)
+            is Resource.Loading -> Resource.Loading()
         }
     }
 
-    override suspend fun getProducto(id: Int): Resource<Producto?> {
-        val result = dataSource.getProducto(id)
-        return when(result){
+    override suspend fun getProducto(id: Int): Resource<Producto> {
+        return when (val result = remoteDataSource.getProducto(id)) {
             is Resource.Success -> {
-                val producto = result.data
-                Resource.Success(producto?.toDomain())
+                result.data?.let { dto ->
+                    Resource.Success(ProductoMapper.toDomain(dto))
+                } ?: Resource.Error("Producto no encontrado")
             }
-            is Resource.Error -> {
-                Resource.Error(result.message ?: "Error")
-            }
-            else -> Resource.Error("Error obtener el producto")
-        }
-    }
-
-    override suspend fun putProducto(id: Int, producto: Producto): Resource<Unit> {
-        return dataSource.putProducto(id, producto.toDto())
-    }
-
-    override suspend fun postProducto(producto: Producto): Resource<Producto?> {
-        val result = dataSource.postProducto(producto.toDto())
-        return when(result){
-            is Resource.Success -> {
-                val producto = result.data
-                Resource.Success(producto?.toDomain())
-            }
-            is Resource.Error -> {
-                Resource.Error(result.message ?: "Error")
-            }
-            else -> Resource.Error("Error obtener el producto")
+            is Resource.Error -> Resource.Error(result.message ?: ERROR_DESCONOCIDO)
+            is Resource.Loading -> Resource.Loading()
         }
     }
 }
-
