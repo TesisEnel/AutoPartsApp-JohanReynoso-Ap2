@@ -237,20 +237,15 @@ private fun CitaAdminCard(
     onRechazar: () -> Unit
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
-    var actionType by remember { mutableStateOf<String?>(null) }
+    var actionType by remember { mutableStateOf<ActionType?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                cita.confirmada -> MaterialTheme.colorScheme.secondaryContainer
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
+            containerColor = getCardBackgroundColor(cita.confirmada)
         ),
-        border = if (!cita.confirmada) {
-            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-        } else null
+        border = getCardBorder(cita.confirmada)
     ) {
         Column(
             modifier = Modifier
@@ -258,162 +253,262 @@ private fun CitaAdminCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Event,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Cita #${cita.citaId}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Surface(
-                    color = if (cita.confirmada) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.tertiary
-                    },
-                    shape = MaterialTheme.shapes.small,
-                    tonalElevation = 2.dp
-                ) {
-                    Text(
-                        text = if (cita.confirmada) "Confirmada" else "Pendiente",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = if (cita.confirmada) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onTertiary
-                        }
-                    )
-                }
-            }
-
+            CitaCardHeader(cita = cita)
             HorizontalDivider()
-
-            InfoRow(
-                icon = Icons.Default.Person,
-                label = "Cliente",
-                value = cita.clienteNombre
-            )
-
-            InfoRow(
-                icon = Icons.Default.Build,
-                label = "Servicio",
-                value = cita.servicioSolicitado
-            )
-
-            InfoRow(
-                icon = Icons.Default.CalendarToday,
-                label = "Fecha",
-                value = formatDate(cita.fechaCita)
-            )
-
-            if (cita.codigoConfirmacion.isNotEmpty()) {
-                InfoRow(
-                    icon = Icons.Default.Key,
-                    label = "Código",
-                    value = cita.codigoConfirmacion
-                )
-            }
+            CitaCardInfo(cita = cita)
 
             if (!cita.confirmada) {
                 HorizontalDivider()
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            actionType = "rechazar"
-                            showConfirmDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isProcessing,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Rechazar")
+                CitaCardActions(
+                    isProcessing = isProcessing,
+                    onConfirmarClick = {
+                        actionType = ActionType.CONFIRMAR
+                        showConfirmDialog = true
+                    },
+                    onRechazarClick = {
+                        actionType = ActionType.RECHAZAR
+                        showConfirmDialog = true
                     }
-
-                    Button(
-                        onClick = {
-                            actionType = "confirmar"
-                            showConfirmDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isProcessing
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Confirmar")
-                    }
-                }
+                )
             }
         }
     }
 
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = {
-                Text(
-                    if (actionType == "confirmar") "Confirmar Cita" else "Rechazar Cita"
-                )
-            },
-            text = {
-                Text(
-                    "¿Estás seguro de que deseas ${if (actionType == "confirmar") "confirmar" else "rechazar"} " +
-                    "la cita de ${cita.clienteNombre}?"
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (actionType == "confirmar") onConfirmar() else onRechazar()
-                        showConfirmDialog = false
-                    },
-                    colors = if (actionType == "rechazar")
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        ) else ButtonDefaults.buttonColors()
-                ) {
-                    Text(if (actionType == "confirmar") "Confirmar" else "Rechazar")
+    if (showConfirmDialog && actionType != null) {
+        CitaConfirmDialog(
+            actionType = actionType!!,
+            clienteNombre = cita.clienteNombre,
+            onConfirm = {
+                when (actionType) {
+                    ActionType.CONFIRMAR -> onConfirmar()
+                    ActionType.RECHAZAR -> onRechazar()
+                    else -> {}
                 }
+                showConfirmDialog = false
+                actionType = null
             },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancelar")
-                }
+            onDismiss = {
+                showConfirmDialog = false
+                actionType = null
             }
         )
     }
+}
+
+private enum class ActionType {
+    CONFIRMAR, RECHAZAR
+}
+
+@Composable
+private fun getCardBackgroundColor(confirmada: Boolean) =
+    if (confirmada) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+
+@Composable
+private fun getCardBorder(confirmada: Boolean) =
+    if (!confirmada) {
+        androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+        )
+    } else {
+        null
+    }
+
+@Composable
+private fun CitaCardHeader(cita: Cita) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CitaIdSection(citaId = cita.citaId)
+        CitaStatusBadge(confirmada = cita.confirmada)
+    }
+}
+
+@Composable
+private fun CitaIdSection(citaId: Int) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Event,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Cita #$citaId",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun CitaStatusBadge(confirmada: Boolean) {
+    Surface(
+        color = if (confirmada) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.tertiary
+        },
+        shape = MaterialTheme.shapes.small,
+        tonalElevation = 2.dp
+    ) {
+        Text(
+            text = if (confirmada) "Confirmada" else "Pendiente",
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = if (confirmada) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onTertiary
+            }
+        )
+    }
+}
+
+@Composable
+private fun CitaCardInfo(cita: Cita) {
+    InfoRow(
+        icon = Icons.Default.Person,
+        label = "Cliente",
+        value = cita.clienteNombre
+    )
+    InfoRow(
+        icon = Icons.Default.Build,
+        label = "Servicio",
+        value = cita.servicioSolicitado
+    )
+    InfoRow(
+        icon = Icons.Default.CalendarToday,
+        label = "Fecha",
+        value = formatDate(cita.fechaCita)
+    )
+
+    if (cita.codigoConfirmacion.isNotEmpty()) {
+        InfoRow(
+            icon = Icons.Default.Key,
+            label = "Código",
+            value = cita.codigoConfirmacion
+        )
+    }
+}
+
+@Composable
+private fun CitaCardActions(
+    isProcessing: Boolean,
+    onConfirmarClick: () -> Unit,
+    onRechazarClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        RechazarButton(
+            onClick = onRechazarClick,
+            enabled = !isProcessing,
+            modifier = Modifier.weight(1f)
+        )
+        ConfirmarButton(
+            onClick = onConfirmarClick,
+            enabled = !isProcessing,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun RechazarButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("Rechazar")
+    }
+}
+
+@Composable
+private fun ConfirmarButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled
+    ) {
+        Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("Confirmar")
+    }
+}
+
+@Composable
+private fun CitaConfirmDialog(
+    actionType: ActionType,
+    clienteNombre: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isConfirmar = actionType == ActionType.CONFIRMAR
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(if (isConfirmar) "Confirmar Cita" else "Rechazar Cita")
+        },
+        text = {
+            Text(
+                "¿Estás seguro de que deseas ${if (isConfirmar) "confirmar" else "rechazar"} " +
+                "la cita de $clienteNombre?"
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = if (isConfirmar) {
+                    ButtonDefaults.buttonColors()
+                } else {
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                }
+            ) {
+                Text(if (isConfirmar) "Confirmar" else "Rechazar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
