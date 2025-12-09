@@ -12,6 +12,10 @@ import javax.inject.Inject
 class UsuarioRemoteDataSource @Inject constructor(
     private val apiService: UsuariosApiService
 ) {
+    companion object {
+        private const val ERROR_CONEXION = "Error de conexión"
+    }
+
     suspend fun login(loginRequest: LoginRequest): Resource<LoginResult> {
         return try {
             val response = apiService.login(loginRequest)
@@ -28,7 +32,7 @@ class UsuarioRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Email o contraseña incorrectos")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error de conexión")
+            Resource.Error(message = e.message ?: ERROR_CONEXION)
         }
     }
 
@@ -41,7 +45,7 @@ class UsuarioRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al registrar usuario")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error de conexión")
+            Resource.Error(message = e.message ?: ERROR_CONEXION)
         }
     }
 
@@ -54,7 +58,7 @@ class UsuarioRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Usuario no encontrado")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error de conexión")
+            Resource.Error(message = e.message ?: ERROR_CONEXION)
         }
     }
 
@@ -67,7 +71,7 @@ class UsuarioRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al actualizar usuario")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error de conexión")
+            Resource.Error(message = e.message ?: ERROR_CONEXION)
         }
     }
 }
