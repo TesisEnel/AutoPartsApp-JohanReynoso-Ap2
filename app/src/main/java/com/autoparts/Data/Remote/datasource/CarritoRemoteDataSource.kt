@@ -11,6 +11,10 @@ import javax.inject.Inject
 class CarritoRemoteDataSource @Inject constructor(
     private val apiService: CarritoApiService
 ) {
+    companion object {
+        private const val ERROR_DESCONOCIDO = "Error desconocido"
+    }
+
     suspend fun getCarrito(): Resource<List<CarritoDto>> {
         return try {
             val response = apiService.getCarrito()
@@ -20,7 +24,7 @@ class CarritoRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error: ${response.code()}")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error desconocido")
+            Resource.Error(message = e.message ?: ERROR_DESCONOCIDO)
         }
     }
 
@@ -33,7 +37,7 @@ class CarritoRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al obtener total")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error desconocido")
+            Resource.Error(message = e.message ?: ERROR_DESCONOCIDO)
         }
     }
 
@@ -46,7 +50,7 @@ class CarritoRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al agregar item")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error desconocido")
+            Resource.Error(message = e.message ?: ERROR_DESCONOCIDO)
         }
     }
 
@@ -59,7 +63,7 @@ class CarritoRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al actualizar item")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error desconocido")
+            Resource.Error(message = e.message ?: ERROR_DESCONOCIDO)
         }
     }
 
@@ -72,7 +76,7 @@ class CarritoRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al eliminar item")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error desconocido")
+            Resource.Error(message = e.message ?: ERROR_DESCONOCIDO)
         }
     }
 
@@ -85,7 +89,7 @@ class CarritoRemoteDataSource @Inject constructor(
                 Resource.Error(message = "Error al limpiar carrito")
             }
         } catch (e: Exception) {
-            Resource.Error(message = e.message ?: "Error desconocido")
+            Resource.Error(message = e.message ?: ERROR_DESCONOCIDO)
         }
     }
 }
