@@ -12,35 +12,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import com.autoparts.presentation.navigation.Screen
+
+private const val LABEL_TELEFONO = "Teléfono"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
-    navController: NavController,
+    onNavigateBack: () -> Unit,
+    onNavigateToVentas: () -> Unit = {},
+    onNavigateToMisCitas: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     viewModel: PerfilViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.successMessage, state.errorMessage) {
-        if (state.successMessage.isNotEmpty()) {
-            snackbarHostState.showSnackbar(state.successMessage)
-            viewModel.onEvent(PerfilUiEvent.ClearMessages)
-        }
-        if (state.errorMessage.isNotEmpty()) {
-            snackbarHostState.showSnackbar(state.errorMessage)
-            viewModel.onEvent(PerfilUiEvent.ClearMessages)
+    LaunchedEffect(state.error) {
+        state.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
         }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Mi Perfil") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Volver")
                     }
                 }
@@ -67,24 +66,20 @@ fun PerfilScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 UserInfoCard(
-                    email = state.email,
-                    userName = state.userName,
-                    phoneNumber = state.phoneNumber,
-                    onEditClick = { viewModel.onEvent(PerfilUiEvent.ShowEditDialog) }
+                    email = state.usuario?.email ?: "",
+                    userName = state.tempUserName.ifBlank { state.usuario?.userName ?: "" },
+                    phoneNumber = state.tempPhoneNumber.ifBlank { state.usuario?.phoneNumber ?: "" },
+                    onEditClick = { viewModel.onEvent(PerfilUiEvent.OnShowEditDialog) }
                 )
 
                 MisComprasButton(
-                    onClick = {
-                        navController.navigate(Screen.Ventas.route)
-                    }
+                    onClick = onNavigateToVentas
                 )
 
                 LogoutButton(
                     onClick = {
-                        viewModel.onEvent(PerfilUiEvent.Logout)
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
+                        viewModel.onEvent(PerfilUiEvent.OnLogout)
+                        onNavigateToLogin()
                     }
                 )
             }
@@ -92,15 +87,15 @@ fun PerfilScreen(
 
         if (state.showEditDialog) {
             EditProfileDialog(
-                userName = state.userName,
-                phoneNumber = state.phoneNumber,
+                userName = state.tempUserName,
+                phoneNumber = state.tempPhoneNumber,
                 userNameError = state.userNameError,
                 phoneNumberError = state.phoneNumberError,
-                onUserNameChange = { viewModel.onEvent(PerfilUiEvent.UserNameChanged(it)) },
-                onPhoneNumberChange = { viewModel.onEvent(PerfilUiEvent.PhoneNumberChanged(it)) },
-                onSave = { viewModel.onEvent(PerfilUiEvent.SaveProfile) },
-                onDismiss = { viewModel.onEvent(PerfilUiEvent.HideEditDialog) },
-                isLoading = state.isLoading
+                onUserNameChange = { viewModel.onEvent(PerfilUiEvent.OnUserNameChanged(it)) },
+                onPhoneNumberChange = { viewModel.onEvent(PerfilUiEvent.OnPhoneNumberChanged(it)) },
+                onSave = { viewModel.onEvent(PerfilUiEvent.OnSaveChanges) },
+                onDismiss = { viewModel.onEvent(PerfilUiEvent.OnDismissEditDialog) },
+                isLoading = state.isSaving
             )
         }
     }
@@ -335,7 +330,7 @@ fun EditProfileDialog(
                 OutlinedTextField(
                     value = phoneNumber,
                     onValueChange = onPhoneNumberChange,
-                    label = { Text("Teléfono") },
+                    label = { Text(LABEL_TELEFONO) },
                     isError = phoneNumberError != null,
                     supportingText = phoneNumberError?.let { { Text(it) } },
                     singleLine = true,
