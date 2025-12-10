@@ -26,28 +26,7 @@ fun ProductImage(
     placeholderSize: androidx.compose.ui.unit.Dp = 48.dp
 ) {
     var isError by remember { mutableStateOf(false) }
-    val decodedBitmap = remember(imageUrl) {
-        imageUrl?.let { url ->
-            if (url.startsWith("data:image")) {
-                try {
-                    val base64String = if (url.contains(",")) {
-                        url.split(",")[1]
-                    } else {
-                        url
-                    }
-
-                    val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
-
-                    BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                } catch (e: Exception) {
-                    android.util.Log.e("ProductImage", "Error decodificando Base64: ${e.message}")
-                    null
-                }
-            } else {
-                null
-            }
-        }
-    }
+    val decodedBitmap = remember(imageUrl) { decodeBase64Image(imageUrl) }
 
     Box(
         modifier = modifier,
@@ -62,7 +41,7 @@ fun ProductImage(
                     contentScale = contentScale
                 )
             }
-            !imageUrl.isNullOrBlank() && !imageUrl.startsWith("data:image") -> {
+            shouldShowAsyncImage(imageUrl) -> {
                 if (!isError) {
                     AsyncImage(
                         model = imageUrl,
@@ -72,23 +51,37 @@ fun ProductImage(
                         onError = { isError = true }
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = null,
-                        modifier = Modifier.size(placeholderSize),
-                        tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                    )
+                    PlaceholderIcon(placeholderSize)
                 }
             }
-            else -> {
-                Icon(
-                    imageVector = Icons.Default.ShoppingCart,
-                    contentDescription = null,
-                    modifier = Modifier.size(placeholderSize),
-                    tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                )
-            }
+            else -> PlaceholderIcon(placeholderSize)
         }
     }
 }
 
+private fun decodeBase64Image(imageUrl: String?): android.graphics.Bitmap? {
+    return imageUrl?.takeIf { it.startsWith("data:image") }?.let { url ->
+        try {
+            val base64String = if (url.contains(",")) url.split(",")[1] else url
+            val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        } catch (e: Exception) {
+            android.util.Log.e("ProductImage", "Error decodificando Base64: ${e.message}")
+            null
+        }
+    }
+}
+
+private fun shouldShowAsyncImage(imageUrl: String?): Boolean {
+    return !imageUrl.isNullOrBlank() && !imageUrl.startsWith("data:image")
+}
+
+@Composable
+private fun PlaceholderIcon(size: androidx.compose.ui.unit.Dp) {
+    Icon(
+        imageVector = Icons.Default.ShoppingCart,
+        contentDescription = null,
+        modifier = Modifier.size(size),
+        tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+    )
+}
