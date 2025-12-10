@@ -29,6 +29,35 @@ private const val CATEGORIA_USO_GENERAL = "Uso General"
 private const val CATEGORIA_AUTOS = "Autos o Vehículos Ligeros"
 private const val CATEGORIA_MOTOCICLETAS = "Motocicletas"
 private const val CATEGORIA_VEHICULOS_PESADOS = "Vehículos Pesados"
+private const val PRICE_MIN_DEFAULT = 0
+private const val PRICE_MAX_DEFAULT = 1000000
+
+private fun matchesSearchQuery(producto: Producto, query: String): Boolean {
+    if (query.isBlank()) return true
+    return producto.productoNombre.contains(query, ignoreCase = true) ||
+           producto.categoria.contains(query, ignoreCase = true) ||
+           producto.productoDescripcion.contains(query, ignoreCase = true)
+}
+
+private fun matchesCategory(producto: Producto, category: String?): Boolean {
+    return category?.let { producto.categoria.equals(it, ignoreCase = true) } ?: true
+}
+
+private fun matchesPriceRange(producto: Producto, minPrice: Int, maxPrice: Int): Boolean {
+    return producto.productoMonto in minPrice..maxPrice
+}
+
+private fun hasActiveFilters(
+    selectedCategory: String?,
+    minPrice: Int,
+    maxPrice: Int,
+    searchQuery: String
+): Boolean {
+    return selectedCategory != null ||
+           minPrice > PRICE_MIN_DEFAULT ||
+           maxPrice < PRICE_MAX_DEFAULT ||
+           searchQuery.isNotEmpty()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,8 +71,8 @@ fun CategoriasScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var selectedCategory by remember { mutableStateOf<String?>(CATEGORIA_USO_GENERAL) }
-    var minPrice by remember { mutableIntStateOf(0) }
-    var maxPrice by remember { mutableIntStateOf(1000000) }
+    var minPrice by remember { mutableIntStateOf(PRICE_MIN_DEFAULT) }
+    var maxPrice by remember { mutableIntStateOf(PRICE_MAX_DEFAULT) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -55,21 +84,9 @@ fun CategoriasScreen(
     )
 
     val filteredProducts = state.listProductos.filter { producto ->
-        val matchesCategory = selectedCategory?.let { category ->
-            producto.categoria.equals(category, ignoreCase = true)
-        } ?: true
-
-        val matchesPrice = producto.productoMonto in minPrice..maxPrice
-
-        val matchesSearch = if (searchQuery.isBlank()) {
-            true
-        } else {
-            producto.productoNombre.contains(searchQuery, ignoreCase = true) ||
-            producto.categoria.contains(searchQuery, ignoreCase = true) ||
-            producto.productoDescripcion.contains(searchQuery, ignoreCase = true)
-        }
-
-        matchesCategory && matchesPrice && matchesSearch
+        matchesCategory(producto, selectedCategory) &&
+        matchesPriceRange(producto, minPrice, maxPrice) &&
+        matchesSearchQuery(producto, searchQuery)
     }
 
     Scaffold(
@@ -82,11 +99,13 @@ fun CategoriasScreen(
                     }
                 },
                 actions = {
+                    val isPriceFiltered = minPrice > PRICE_MIN_DEFAULT || maxPrice < PRICE_MAX_DEFAULT
                     IconButton(onClick = { showFilterDialog = true }) {
                         Badge(
-                            containerColor = if (minPrice > 0 || maxPrice < 1000000)
+                            containerColor = if (isPriceFiltered)
                                 MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Icon(Icons.Default.FilterList, "Filtrar por precio")
                         }
@@ -128,11 +147,7 @@ fun CategoriasScreen(
                     Icon(Icons.Default.Search, "Buscar")
                 },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, "Limpiar")
-                        }
-                    }
+                    ClearSearchButton(searchQuery) { searchQuery = "" }
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(24.dp),
@@ -165,65 +180,20 @@ fun CategoriasScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                if (selectedCategory != null || minPrice > 0 || maxPrice < 1000000 || searchQuery.isNotEmpty()) {
-                    TextButton(onClick = {
+                ClearFiltersButton(
+                    visible = hasActiveFilters(selectedCategory, minPrice, maxPrice, searchQuery),
+                    onClick = {
                         selectedCategory = CATEGORIA_USO_GENERAL
-                        minPrice = 0
-                        maxPrice = 1000000
+                        minPrice = PRICE_MIN_DEFAULT
+                        maxPrice = PRICE_MAX_DEFAULT
                         searchQuery = ""
-                    }) {
-                        Text("Limpiar filtros")
                     }
-                }
+                )
             }
 
-            if (filteredProducts.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Sin resultados",
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "No se encontraron productos",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Intenta con otros filtros",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(
-                        items = filteredProducts,
-                        key = { producto -> producto.productoId ?: 0 }
-                    ) { producto ->
-                        ProductoFilteredCard(
-                            producto = producto,
-                            onProductoClick = {
-                                producto.productoId?.let { id ->
-                                    onNavigateToProductoDetalle(id)
-                                }
-                            }
-                        )
-                    }
-                }
+            when {
+                filteredProducts.isEmpty() -> EmptyProductsView()
+                else -> ProductsListView(filteredProducts, onNavigateToProductoDetalle)
             }
         }
     }
@@ -237,6 +207,78 @@ fun CategoriasScreen(
             onDismiss = { showFilterDialog = false },
             onApply = { showFilterDialog = false }
         )
+    }
+}
+
+@Composable
+private fun ClearSearchButton(searchQuery: String, onClear: () -> Unit) {
+    if (searchQuery.isNotEmpty()) {
+        IconButton(onClick = onClear) {
+            Icon(Icons.Default.Close, "Limpiar")
+        }
+    }
+}
+
+@Composable
+private fun ClearFiltersButton(visible: Boolean, onClick: () -> Unit) {
+    if (visible) {
+        TextButton(onClick = onClick) {
+            Text("Limpiar filtros")
+        }
+    }
+}
+
+@Composable
+private fun EmptyProductsView() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Sin resultados",
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "No se encontraron productos",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Intenta con otros filtros",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductsListView(
+    productos: List<Producto>,
+    onProductoClick: (Int) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(
+            items = productos,
+            key = { producto -> producto.productoId ?: 0 }
+        ) { producto ->
+            ProductoFilteredCard(
+                producto = producto,
+                onProductoClick = {
+                    producto.productoId?.let { id -> onProductoClick(id) }
+                }
+            )
+        }
     }
 }
 
@@ -394,6 +436,27 @@ fun ProductoFilteredCard(
     }
 }
 
+private fun adjustMaxPriceOnMinChange(minPrice: Int): Int = when {
+    minPrice >= 10000 -> PRICE_MAX_DEFAULT
+    minPrice >= 1000 -> 10000
+    minPrice >= 500 -> 1000
+    else -> 1000
+}
+
+private fun adjustMinPriceOnMaxChange(maxPrice: Int): Int = when {
+    maxPrice <= 1000 -> PRICE_MIN_DEFAULT
+    maxPrice <= 5000 -> 1000
+    maxPrice <= 10000 -> 5000
+    else -> 10000
+}
+
+private fun formatPriceRange(minPrice: Int, maxPrice: Int): String = when {
+    minPrice == PRICE_MIN_DEFAULT && maxPrice == PRICE_MAX_DEFAULT -> "Todos los precios"
+    minPrice == PRICE_MIN_DEFAULT -> "Hasta RD$ ${String.format(Locale.US, "%,d", maxPrice)}"
+    maxPrice == PRICE_MAX_DEFAULT -> "Desde RD$ ${String.format(Locale.US, "%,d", minPrice)}"
+    else -> "RD$ ${String.format(Locale.US, "%,d", minPrice)} - RD$ ${String.format(Locale.US, "%,d", maxPrice)}"
+}
+
 @Composable
 fun PriceFilterDialog(
     minPrice: Int,
@@ -444,24 +507,13 @@ fun PriceFilterDialog(
                             selected = selectedMinPrice == price,
                             onClick = {
                                 selectedMinPrice = price
-                                if (selectedMinPrice > selectedMaxPrice && price > 0) {
-                                    selectedMaxPrice = when {
-                                        price >= 10000 -> 1000000
-                                        price >= 1000 -> 10000
-                                        price >= 500 -> 1000
-                                        else -> 1000
-                                    }
+                                if (selectedMinPrice > selectedMaxPrice && price > PRICE_MIN_DEFAULT) {
+                                    selectedMaxPrice = adjustMaxPriceOnMinChange(price)
                                 }
                             },
                             label = { Text(label) },
                             leadingIcon = if (selectedMinPrice == price) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                                { Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp)) }
                             } else null
                         )
                     }
@@ -484,24 +536,13 @@ fun PriceFilterDialog(
                             selected = selectedMaxPrice == price,
                             onClick = {
                                 selectedMaxPrice = price
-                                if (selectedMaxPrice < selectedMinPrice && price < 1000000) {
-                                    selectedMinPrice = when {
-                                        price <= 1000 -> 0
-                                        price <= 5000 -> 1000
-                                        price <= 10000 -> 5000
-                                        else -> 10000
-                                    }
+                                if (selectedMaxPrice < selectedMinPrice && price < PRICE_MAX_DEFAULT) {
+                                    selectedMinPrice = adjustMinPriceOnMaxChange(price)
                                 }
                             },
                             label = { Text(label) },
                             leadingIcon = if (selectedMaxPrice == price) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                                { Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp)) }
                             } else null
                         )
                     }
@@ -523,12 +564,7 @@ fun PriceFilterDialog(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = when {
-                                selectedMinPrice == 0 && selectedMaxPrice == 1000000 -> "Todos los precios"
-                                selectedMinPrice == 0 -> "Hasta RD$ ${String.format(Locale.US, "%,d", selectedMaxPrice)}"
-                                selectedMaxPrice == 1000000 -> "Desde RD$ ${String.format(Locale.US, "%,d", selectedMinPrice)}"
-                                else -> "RD$ ${String.format(Locale.US, "%,d", selectedMinPrice)} - RD$ ${String.format(Locale.US, "%,d", selectedMaxPrice)}"
-                            },
+                            text = formatPriceRange(selectedMinPrice, selectedMaxPrice),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
