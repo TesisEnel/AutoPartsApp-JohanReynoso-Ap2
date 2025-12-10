@@ -281,7 +281,7 @@ fun CitaCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cancelar Cita")
+                    Text(LABEL_CANCELAR_CITA)
                 }
             } else {
                 Spacer(modifier = Modifier.height(4.dp))
